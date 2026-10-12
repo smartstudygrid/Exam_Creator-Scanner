@@ -9,48 +9,66 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <style>
 html,body{background:#0f172a;color:#e2e8f0;overscroll-behavior:none}
-#view{position:relative;background:#000;border-radius:12px;overflow:hidden}
-#video,#capCanvas{width:100%;height:auto;display:block}
+#stickyTop{position:sticky;top:0;z-index:30;background:#0f172a;padding:8px 0 8px}
+#view{position:relative;background:#000;border-radius:12px;overflow:hidden;height:40vh;min-height:280px}
+#video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+#capCanvas{width:100%;height:auto;display:block}
 #overlay{position:absolute;inset:0;pointer-events:none}
-.cornerbox{position:absolute;width:64px;height:64px;border:3px solid rgba(45,212,191,.9);border-radius:8px}
-.cornerbox.locked{border-color:#22c55e;background:rgba(34,197,94,.15)}
-#cb-tl{top:4%;left:4%}#cb-tr{top:4%;right:4%}#cb-bl{bottom:4%;left:4%}#cb-br{bottom:4%;right:4%}
-#lockMsg{position:absolute;top:8px;left:0;right:0;text-align:center;font-size:12px;font-weight:800;color:#5eead4;text-shadow:0 1px 4px #000}
+#a4guide{position:absolute;top:2%;bottom:2%;left:50%;aspect-ratio:1/1.414;transform:translateX(-50%);border:2px dashed rgba(45,212,191,.55);border-radius:8px}
+.cornerbox{position:absolute;width:44px;height:44px;border:3px solid rgba(45,212,191,.95);border-radius:8px;background:rgba(45,212,191,.06)}
+.cornerbox.locked{border-color:#22c55e;background:rgba(34,197,94,.18)}
+#cb-tl{top:-6px;left:-6px}#cb-tr{top:-6px;right:-6px}#cb-bl{bottom:-6px;left:-6px}#cb-br{bottom:-6px;right:-6px}
+#lockMsg{position:absolute;top:4px;left:0;right:0;text-align:center;font-size:12px;font-weight:800;color:#5eead4;text-shadow:0 1px 4px #000}
 .btn{font-weight:800;font-size:14px;padding:12px;border-radius:12px;width:100%}
+#fabCap{position:sticky;bottom:10px;z-index:25;margin-top:8px;box-shadow:0 8px 24px rgba(0,0,0,.5)}
 .tab{flex:1;padding:10px;font-weight:800;font-size:13px;border-radius:10px}
 .tab.on{background:#fff;color:#0f172a}
+#scoreBar{position:sticky;top:0;z-index:20}
 canvas#out{width:100%;height:auto;background:#fff;border-radius:10px}
 input,textarea,select{color:#0f172a}
+details.tune summary{cursor:pointer;font-size:12px;font-weight:800;padding:10px}
 </style>
 </head>
 <body class="min-h-screen">
-<div class="max-w-md mx-auto p-3 space-y-3 pb-10">
+<div class="max-w-md mx-auto p-3 space-y-3 pb-24">
 <div class="flex items-center justify-between">
 <div><h1 class="font-extrabold text-base">AIS Scanner <span class="text-[10px] bg-teal-500 text-slate-900 px-2 py-0.5 rounded-full">PHONE</span></h1>
 <p id="cvStat" class="text-[11px] text-slate-400">OpenCV loading…</p></div>
 <a href="../index.html" class="text-[11px] bg-slate-800 border border-slate-700 px-2 py-1.5 rounded-lg">Creator</a>
 </div>
-<div class="flex gap-2 bg-slate-800 p-1.5 rounded-xl">
+<div id="stickyTop">
+<div class="flex gap-2 bg-slate-800 p-1.5 rounded-xl mb-2">
 <button id="tabKey" class="tab on" onclick="setMode('key')">1. Register Key</button>
 <button id="tabGrade" class="tab" onclick="setMode('grade')">2. Grade</button>
 </div>
 <div id="view">
 <video id="video" playsinline muted></video>
 <canvas id="capCanvas" class="hidden"></canvas>
-<div id="overlay"><div id="lockMsg">Fit 4 black squares in corner boxes</div><div id="cb-tl" class="cornerbox"></div><div id="cb-tr" class="cornerbox"></div><div id="cb-bl" class="cornerbox"></div><div id="cb-br" class="cornerbox"></div></div>
+<div id="overlay"><div id="a4guide"><div id="lockMsg">Fit paper in guide</div><div id="cb-tl" class="cornerbox"></div><div id="cb-tr" class="cornerbox"></div><div id="cb-bl" class="cornerbox"></div><div id="cb-br" class="cornerbox"></div></div></div>
 </div>
-<div class="grid grid-cols-2 gap-2">
-<button onclick="startCam()" class="btn bg-teal-500 text-slate-900"><i class="fa-solid fa-camera mr-1"></i>Open camera</button>
-<button onclick="captureFrame()" class="btn bg-white text-slate-900"><i class="fa-solid fa-circle-dot mr-1"></i>Capture</button>
+<div class="grid grid-cols-3 gap-2 mt-2">
+<button onclick="startCam()" class="btn bg-teal-500 text-slate-900 !py-2.5 text-[13px]"><i class="fa-solid fa-camera mr-1"></i>Camera</button>
+<button onclick="switchCam()" class="btn bg-slate-700 text-white !py-2.5 text-[13px]"><i class="fa-solid fa-rotate mr-1"></i>Switch</button>
+<button onclick="captureFrame()" class="btn bg-white text-slate-900 !py-2.5 text-[13px]"><i class="fa-solid fa-circle-dot mr-1"></i>Capture</button>
 </div>
-<label class="flex items-center gap-2 text-xs bg-slate-800 rounded-xl px-3 py-2"><input type="checkbox" id="autoCap" checked class="w-4 h-4">Auto-capture when steady (ZipGrade-like)</label>
-<input type="file" id="filePick" accept="image/*" capture="environment" class="w-full text-xs bg-slate-800 rounded-xl p-2">
-<div class="bg-slate-800 rounded-xl p-3 grid grid-cols-2 gap-2 text-[11px]">
+</div>
+<label class="flex items-center gap-2 text-xs bg-slate-800 rounded-xl px-3 py-2"><input type="checkbox" id="autoCap" checked class="w-4 h-4">Auto-capture when steady</label>
+<details class="tune bg-slate-800 rounded-xl">
+<summary>⚙ Tuning + file upload (tap to open)</summary>
+<div class="p-3 space-y-2">
+<input type="file" id="filePick" accept="image/*" capture="environment" class="w-full text-xs bg-slate-700 rounded-xl p-2">
+<div class="grid grid-cols-2 gap-2 text-[11px]">
 <label>Dark threshold (0=auto Otsu)<input type="range" id="thresh" min="0" max="220" value="0" class="w-full"><span id="threshV">auto</span></label>
 <label>Sensitivity<input type="range" id="sens" min="120" max="180" value="140" class="w-full"><span id="sensV">1.40x</span></label>
 <label class="flex items-center gap-1"><input type="checkbox" id="debugBin" class="w-4 h-4">Show binary debug</label>
-<label>Expected rows<input type="number" id="expRows" value="15" min="1" max="50" class="w-full text-slate-900 rounded p-1"></label>
+<label>Expected rows (auto)<input type="number" id="expRows" value="15" min="1" max="50" readonly class="w-full text-slate-900 rounded p-1 bg-slate-200"></label>
 </div>
+<div class="flex gap-2 text-[11px]">
+<button onclick="loadKeyToGrade()" class="flex-1 bg-slate-700 border border-slate-600 rounded-lg py-1.5 font-bold">Reload key</button>
+<button onclick="toggleTorch()" class="bg-slate-700 border border-slate-600 rounded-lg px-3 font-bold">Torch</button>
+</div>
+</div>
+</details>
 <div class="bg-white text-slate-900 rounded-xl p-3 space-y-2">
 <div id="modeKeyBox">
 <h2 class="text-xs font-extrabold uppercase">Prefilled key sheet → key</h2>
@@ -62,15 +80,12 @@ input,textarea,select{color:#0f172a}
 </div>
 <div id="modeGradeBox" class="hidden">
 <h2 class="text-xs font-extrabold uppercase">Grade student sheet</h2>
-<div class="flex gap-2 text-[11px]">
-<button onclick="loadKeyToGrade()" class="flex-1 bg-slate-100 border rounded-lg py-1.5 font-bold">Load saved key</button>
-<button onclick="toggleTorch()" class="bg-slate-100 border rounded-lg px-3 font-bold">Torch</button>
-</div>
 <div id="keyLoaded" class="text-[11px] text-slate-500">No key loaded.</div>
-<div id="scoreBox" class="text-base font-extrabold">No scan yet.</div>
+<div id="scoreBar"><div id="scoreBox" class="text-base font-extrabold">No scan yet.</div></div>
 <button id="dlBtn" onclick="downloadGraded()" disabled class="btn bg-emerald-600 text-white disabled:bg-slate-300">Download graded PNG</button>
 </div>
 </div>
+<div class="bg-amber-50 border border-amber-200 rounded-xl p-3 text-[11px] text-amber-900"><b>Print on paper</b> — screen photos (monitor) cause glare/moiré and misreads. Print the bubble sheet flat in good light, fill bubbles dark, fit the page inside the guide.</div>
 <div class="bg-white rounded-xl p-2">
 <h2 class="text-[11px] font-extrabold text-slate-700 px-1 py-1 uppercase">Result (green=correct red=wrong yellow=blank)</h2>
 <canvas id="out"></canvas>
@@ -84,8 +99,21 @@ let storedKey=JSON.parse(localStorage.getItem('ais_scan_key')||'null');
 const video=document.getElementById('video'), cap=document.getElementById('capCanvas'), out=document.getElementById('out');
 setInterval(()=>{document.getElementById('cvStat').innerText=(window.cv&&cv.Mat)?'OpenCV ready':'OpenCV loading…';},900);
 function setMode(m){mode=m;document.getElementById('tabKey').classList.toggle('on',m==='key');document.getElementById('tabGrade').classList.toggle('on',m==='grade');document.getElementById('modeKeyBox').classList.toggle('hidden',m!=='key');document.getElementById('modeGradeBox').classList.toggle('hidden',m!=='grade');}
-async function startCam(){
-try{stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment',width:{ideal:1920},height:{ideal:1440}},audio:false});video.srcObject=stream;await video.play();track=stream.getVideoTracks()[0];tick();}catch(e){alert('Camera blocked. Use file upload below. '+e.message);}
+let camIndex=0;
+async function startCam(devId){
+try{
+if(stream) stream.getTracks().forEach(t=>t.stop());
+const cons=devId?{video:{deviceId:{exact:devId}},audio:false}:{video:{facingMode:'environment',width:{ideal:1920},height:{ideal:1440}},audio:false};
+stream=await navigator.mediaDevices.getUserMedia(cons);video.srcObject=stream;await video.play();track=stream.getVideoTracks()[0];tick();}catch(e){alert('Camera blocked. Use file upload in Tuning. '+e.message);}
+}
+async function switchCam(){
+try{
+const devs=await navigator.mediaDevices.enumerateDevices();
+const cams=devs.filter(d=>d.kind==='videoinput');
+if(cams.length<2){alert('Only one camera found.');return;}
+camIndex=(camIndex+1)%cams.length;
+startCam(cams[camIndex].deviceId);
+}catch(e){alert('Switch failed: '+e.message);}
 }
 async function toggleTorch(){try{await track.applyConstraints({advanced:[{torch:true}]});}catch(e){alert('Torch not supported');}}
 document.getElementById('filePick').onchange=e=>{const f=e.target.files[0];if(!f)return;const img=new Image();img.onload=()=>{drawTo(cap,img);handleImage(false);};img.src=URL.createObjectURL(f);};
@@ -259,15 +287,16 @@ const k=parsed.key;
 let p=document.getElementById('ptsText').value.trim();
 if(!p&&parsed.pts.length) {p=parsed.pts.join(',');document.getElementById('ptsText').value=p;}
 const exp=parseInt(document.getElementById('expRows').value)||0;
-if(!k.length){alert('No valid key letters found. Paste like A,C,B or KEY:A,C | POINTS:1,1,1');return;}
-if(exp>0&&k.length!==exp){if(!confirm('Key has '+k.length+' rows but expected '+exp+'. Save anyway?'))return;}
+if(!k.length){alert('No valid key letters found. Paste like A,C,B');return;}
 storedKey={key:k,pts:p,savedAt:new Date().toISOString()};
 localStorage.setItem('ais_scan_key',JSON.stringify(storedKey));
-document.getElementById('keySaved').innerText='Key saved on phone: '+k.length+' rows'+(parsed.pts.length?' + points':'')+'. Prefix KEY:/POINTS: stripped.';
+document.getElementById('expRows').value=k.length;
+document.getElementById('keySaved').innerText='Key saved on phone: '+k.length+' rows.';
 setMode('grade');loadKeyToGrade();
 }
 function loadKeyToGrade(){
 storedKey=JSON.parse(localStorage.getItem('ais_scan_key')||'null');
+if(storedKey) document.getElementById('expRows').value=storedKey.key.length;
 document.getElementById('keyLoaded').innerText=storedKey?('Key: '+storedKey.key.length+' rows ('+storedKey.key.slice(0,8).join(',')+'…)'):'No saved key. Register first.';
 }
 function gradeRows(rows){
