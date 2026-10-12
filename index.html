@@ -254,11 +254,18 @@ let cands=[];
 for(let i=0;i<contours.size();i++){const c=contours.get(i);const a=cv.contourArea(c);if(a<120||a>12000)continue;const p=cv.arcLength(c,true);if(!p)continue;const circ=4*Math.PI*a/(p*p);if(circ<0.55)continue;const r=cv.boundingRect(c);const asp=r.width/Math.max(1,r.height);if(asp<0.7||asp>1.4)continue;const hwr=r.height/Math.max(1,bin.rows);if(hwr<0.008||hwr>0.06)continue;cands.push({x:r.x+r.width/2,y:r.y+r.height/2,w:r.width,h:r.height,area:a});c.delete();}
 // median area filter: bubbles are similar size; drop outliers
 if(cands.length>4){const s=[...cands].map(c=>c.area).sort((a,b)=>a-b);const med=s[Math.floor(s.length/2)];cands=cands.filter(c=>c.area>med*0.35&&c.area<med*2.8);}
-cands.sort((a,b)=>a.y-b.y);
-const rows=[];const tol=Math.max(12, (cap.height||800)*0.018);
-cands.forEach(c=>{let f=false;for(const r of rows){if(Math.abs(r.y-c.y)<tol){r.items.push(c);r.y=(r.y*(r.items.length)+c.y)/(r.items.length+1);f=true;break;}}if(!f)rows.push({y:c.y,items:[c]});});
-rows.forEach(r=>r.items.sort((a,b)=>a.x-b.x));
-let bRows=rows.filter(r=>r.items.length>=2&&r.items.length<=6);
+// FIXED-template columns: left half = rows 1-25, right half = 26-50. Cluster per half
+// so same-height rows across columns never merge (the old A+B-every-row bug).
+const midX=bin.cols/2, gut=bin.cols*0.02;
+cands=cands.filter(c=>Math.abs(c.x-midX)>gut);
+function clusterHalf(list){
+  list.sort((a,b)=>a.y-b.y);
+  const rs=[];const tol=Math.max(12,(cap.height||800)*0.018);
+  list.forEach(c=>{let f=false;for(const r of rs){if(Math.abs(r.y-c.y)<tol){r.items.push(c);r.y=(r.y*(r.items.length)+c.y)/(r.items.length+1);f=true;break;}}if(!f)rs.push({y:c.y,items:[c]});});
+  rs.forEach(r=>r.items.sort((a,b)=>a.x-b.x));
+  return rs.filter(r=>r.items.length>=2&&r.items.length<=6);
+}
+let bRows=clusterHalf(cands.filter(c=>c.x<midX)).concat(clusterHalf(cands.filter(c=>c.x>=midX)));
 // expected rows hint: keep closest to expected count from top
 const exp=parseInt(document.getElementById('expRows').value)||0;
 if(exp>0&&bRows.length>exp) bRows=bRows.slice(0,exp);
