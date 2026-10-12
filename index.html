@@ -12,7 +12,10 @@ html,body{background:#0f172a;color:#e2e8f0;overscroll-behavior:none}
 #view{position:relative;background:#000;border-radius:12px;overflow:hidden}
 #video,#capCanvas{width:100%;height:auto;display:block}
 #overlay{position:absolute;inset:0;pointer-events:none}
-.guide{position:absolute;inset:6% 5%;border:2px dashed rgba(45,212,191,.9);border-radius:10px}
+.cornerbox{position:absolute;width:64px;height:64px;border:3px solid rgba(45,212,191,.9);border-radius:8px}
+.cornerbox.locked{border-color:#22c55e;background:rgba(34,197,94,.15)}
+#cb-tl{top:4%;left:4%}#cb-tr{top:4%;right:4%}#cb-bl{bottom:4%;left:4%}#cb-br{bottom:4%;right:4%}
+#lockMsg{position:absolute;top:8px;left:0;right:0;text-align:center;font-size:12px;font-weight:800;color:#5eead4;text-shadow:0 1px 4px #000}
 .btn{font-weight:800;font-size:14px;padding:12px;border-radius:12px;width:100%}
 .tab{flex:1;padding:10px;font-weight:800;font-size:13px;border-radius:10px}
 .tab.on{background:#fff;color:#0f172a}
@@ -25,7 +28,7 @@ input,textarea,select{color:#0f172a}
 <div class="flex items-center justify-between">
 <div><h1 class="font-extrabold text-base">AIS Scanner <span class="text-[10px] bg-teal-500 text-slate-900 px-2 py-0.5 rounded-full">PHONE</span></h1>
 <p id="cvStat" class="text-[11px] text-slate-400">OpenCV loading…</p></div>
-<a href="index.html" class="text-[11px] bg-slate-800 border border-slate-700 px-2 py-1.5 rounded-lg">Creator</a>
+<a href="../index.html" class="text-[11px] bg-slate-800 border border-slate-700 px-2 py-1.5 rounded-lg">Creator</a>
 </div>
 <div class="flex gap-2 bg-slate-800 p-1.5 rounded-xl">
 <button id="tabKey" class="tab on" onclick="setMode('key')">1. Register Key</button>
@@ -34,7 +37,7 @@ input,textarea,select{color:#0f172a}
 <div id="view">
 <video id="video" playsinline muted></video>
 <canvas id="capCanvas" class="hidden"></canvas>
-<div id="overlay"><div class="guide"></div></div>
+<div id="overlay"><div id="lockMsg">Fit 4 black squares in corner boxes</div><div id="cb-tl" class="cornerbox"></div><div id="cb-tr" class="cornerbox"></div><div id="cb-bl" class="cornerbox"></div><div id="cb-br" class="cornerbox"></div></div>
 </div>
 <div class="grid grid-cols-2 gap-2">
 <button onclick="startCam()" class="btn bg-teal-500 text-slate-900"><i class="fa-solid fa-camera mr-1"></i>Open camera</button>
@@ -98,6 +101,65 @@ if(now-lastT>900){lastT=now;handleImage(true);}
 }
 requestAnimationFrame(tick);
 }
+function orderCorners(pts){
+  // pts: [{x,y} x4] -> [tl,tr,br,bl]
+  const s=pts.map(p=>({p,s:p.x+p.y,d:p.x-p.y}));
+  const tl=[...s].sort((a,b)=>a.s-b.s)[0].p;
+  const br=[...s].sort((a,b)=>b.s-a.s)[0].p;
+  const tr=[...s].sort((a,b)=>b.d-a.d)[0].p;
+  const bl=[...s].sort((a,b)=>a.d-b.d)[0].p;
+  return [tl,tr,br,bl];
+}
+function tryWarpByFiducials(srcCanvas){
+  // find 4 large solid squares near corners; if found warp to straight
+  let src=cv.imread(srcCanvas);
+  let gray=new cv.Mat();cv.cvtColor(src,gray,cv.COLOR_RGBA2GRAY);
+  let bin=new cv.Mat();cv.threshold(gray,bin,90,255,cv.THRESH_BINARY_INV);
+  let contours=new cv.MatVector(),hier=new cv.Mat();
+  cv.findContours(bin,contours,hier,cv.RETR_EXTERNAL,cv.CHAIN_APPROX_SIMPLE);
+  let quads=[];
+  for(let i=0;i<contours.size();i++){
+    const c=contours.get(i);const a=cv.contourArea(c);
+    if(a<800||a>bin.rows*bin.cols*0.05)continue;
+    const peri=cv.arcLength(c,true);const approx=new cv.Mat();
+    cv.approxPolyDP(c,approx,0.04*peri,true);
+    if(approx.rows===4){
+      const r=cv.boundingRect(c);const asp=r.width/Math.max(1,r.height);
+      if(asp>0.8&&asp<1.25){
+        // solidity: filled square, not bubble (bubbles smaller + circular)
+        quads.push({area:a,cx:r.x+r.width/2,cy:r.y+r.height/2,rect:r});
+      }
+    }
+    approx.delete();c.delete();
+  }
+  src.delete();gray.delete();bin.delete();contours.delete();hier.delete();
+  // pick 4 closest to image corners
+  if(quads.length<4) return {ok:false,n:quads.length};
+  const W=srcCanvas.width,H=srcCanvas.height;
+  const corners=[{x:0,y:0},{x:W,y:0},{x:0,y:H},{x:W,y:H}];
+  const picked=corners.map(c=>{
+    let best=null,bd=1e12;
+    quads.forEach(q=>{const d=(q.cx-c.x)**2+(q.cy-c.y)**2;if(d<bd){bd=d;best=q;}});
+    return best;
+  });
+  if(new Set(picked).size<4) return {ok:false,n:quads.length};
+  const pts=orderCorners(picked.map(q=>({x:q.cx,y:q.cy})));
+  // warp to 1000x1400 straight
+  try{
+    const srcM=cv.matFromArray(4,1,cv.CV_32FC2,[pts[0].x,pts[0].y,pts[1].x,pts[1].y,pts[2].x,pts[2].y,pts[3].x,pts[3].y]);
+    const dstM=cv.matFromArray(4,1,cv.CV_32FC2,[0,0,1000,0,1000,1400,0,1400]);
+    const M=cv.getPerspectiveTransform(srcM,dstM);
+    let src2=cv.imread(srcCanvas);
+    let dst=new cv.Mat();cv.warpPerspective(src2,dst,M,new cv.Size(1000,1400),cv.INTER_LINEAR,cv.BORDER_CONSTANT,new cv.Scalar(255,255,255,255));
+    cv.imshow(srcCanvas,dst);
+    src2.delete();dst.delete();srcM.delete();dstM.delete();M.delete();
+    return {ok:true};
+  }catch(e){return {ok:false,n:4};}
+}
+function setLockUI(locked,msg){
+  ['cb-tl','cb-tr','cb-bl','cb-br'].forEach(id=>document.getElementById(id).classList.toggle('locked',!!locked));
+  document.getElementById('lockMsg').innerText=msg;
+}
 function currentThresh(){const v=parseInt(document.getElementById('thresh').value);document.getElementById('threshV').innerText=v===0?'auto':v;return v;}
 function currentSens(){const v=parseInt(document.getElementById('sens').value);document.getElementById('sensV').innerText=(v/100).toFixed(2)+'x';return v/100;}
 function detectBubbles(canvasEl, threshOpt){
@@ -145,6 +207,9 @@ if(mx<0.42) return [];
 return fills.map((f,i)=>f>0.42&&f>mx*0.6?L[i]:null).filter(Boolean);
 }
 function handleImage(fromCam){
+const warp=tryWarpByFiducials(cap);
+if(warp.ok) setLockUI(true,'Corners locked — scanning');
+else setLockUI(false, warp.n>0?('Found '+warp.n+'/4 squares — fit black squares in boxes'):'Fit 4 black squares in corner boxes');
 const rows=detectBubbles(cap,currentThresh());
 if(rows==='debug') return;
 if(!rows.length){if(!fromCam||mode==='key')alert('No bubbles found. Fill frame with sheet, flatten, better light. Try threshold auto/120-160.');return;}
@@ -167,12 +232,38 @@ document.getElementById('keyText').value=key.join(',');
 drawAnnotated(rows, key.map(k=>({key:k,picked:k==='-'?[]:k.split('+'),ok:true,blank:k==='-'})), 'KEY: '+rows.length+' rows — review, Save', true);
 document.getElementById('keySaved').innerText=rows.length+' rows detected. Review, edit, Save.';
 }
+function parsePastedKey(raw){
+  raw=(raw||'').trim();
+  if(!raw) return {key:[],pts:[]};
+  let keyPart=raw, ptsPart='';
+  const mPts=raw.match(/POINTS\s*:\s*([0-9,\s]+)/i);
+  if(mPts) ptsPart=mPts[1];
+  const mKey=raw.match(/KEY\s*:\s*([^|]+)/i);
+  if(mKey) keyPart=mKey[1];
+  else if(raw.includes('|')) keyPart=raw.split('|')[0];
+  const toks=keyPart.split(/[,|\n;]+/).map(s=>s.trim().toUpperCase()).filter(Boolean);
+  const clean=[];
+  for(let t of toks){
+    t=t.replace(/^KEY\s*:\s*/,'').trim();
+    if(!t||/^POINTS/.test(t)) continue;
+    if(/^[A-F](\+[A-F])+$/.test(t)){clean.push(t);continue;}
+    const m2=t.match(/([A-F](?:\+[A-F]+)?|\bT\b|\bF\b|-)/);
+    if(m2) clean.push(m2[1]);
+  }
+  const pts=ptsPart?ptsPart.split(/[, ]+/).map(x=>parseInt(x)||1).filter(x=>x>0):[];
+  return {key:clean,pts};
+}
 function saveKey(){
-const k=document.getElementById('keyText').value.split(/[,|\n]+/).map(s=>s.trim().toUpperCase()).filter(Boolean);
-const p=document.getElementById('ptsText').value;
+const parsed=parsePastedKey(document.getElementById('keyText').value);
+const k=parsed.key;
+let p=document.getElementById('ptsText').value.trim();
+if(!p&&parsed.pts.length) {p=parsed.pts.join(',');document.getElementById('ptsText').value=p;}
+const exp=parseInt(document.getElementById('expRows').value)||0;
+if(!k.length){alert('No valid key letters found. Paste like A,C,B or KEY:A,C | POINTS:1,1,1');return;}
+if(exp>0&&k.length!==exp){if(!confirm('Key has '+k.length+' rows but expected '+exp+'. Save anyway?'))return;}
 storedKey={key:k,pts:p,savedAt:new Date().toISOString()};
 localStorage.setItem('ais_scan_key',JSON.stringify(storedKey));
-document.getElementById('keySaved').innerText='Key saved on phone: '+k.length+' rows.';
+document.getElementById('keySaved').innerText='Key saved on phone: '+k.length+' rows'+(parsed.pts.length?' + points':'')+'. Prefix KEY:/POINTS: stripped.';
 setMode('grade');loadKeyToGrade();
 }
 function loadKeyToGrade(){
