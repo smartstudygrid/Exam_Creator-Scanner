@@ -1,417 +1,178 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>AIS Scanner — Phone</title>
-<script src="https://cdn.tailwindcss.com"></script>
-<script async src="https://docs.opencv.org/4.8.0/opencv.js"></script>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>BubbleGrid</title>
 <style>
-html,body{background:#0f172a;color:#e2e8f0;overscroll-behavior:none}
-#stickyTop{position:sticky;top:0;z-index:30;background:#0f172a;padding:8px 0 8px}
-#view{position:relative;background:#000;border-radius:12px;overflow:hidden;height:40vh;min-height:280px}
-#video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
-#capCanvas{width:100%;height:auto;display:block}
-#overlay{position:absolute;inset:0;pointer-events:none}
-#a4guide{position:absolute;top:2%;bottom:2%;left:50%;aspect-ratio:1/1.414;transform:translateX(-50%);border:2px dashed rgba(45,212,191,.30);border-radius:8px}
-.cornerbox{position:absolute;width:40px;height:40px;margin:-20px 0 0 -20px;border:3px solid rgba(45,212,191,.95);border-radius:8px;background:rgba(45,212,191,.06);transition:left .3s,top .3s}
-.cornerbox.locked{border-color:#22c55e;background:rgba(34,197,94,.18)}
-#cb-tl{left:18%;top:8%}#cb-tr{left:82%;top:8%}#cb-bl{left:18%;top:92%}#cb-br{left:82%;top:92%}
-#lockMsg{position:absolute;top:4px;left:0;right:0;text-align:center;font-size:12px;font-weight:800;color:#5eead4;text-shadow:0 1px 4px #000}
-.btn{font-weight:800;font-size:14px;padding:12px;border-radius:12px;width:100%}
-#fabCap{position:sticky;bottom:10px;z-index:25;margin-top:8px;box-shadow:0 8px 24px rgba(0,0,0,.5)}
-.tab{flex:1;padding:10px;font-weight:800;font-size:13px;border-radius:10px}
-.tab.on{background:#fff;color:#0f172a}
-#scoreBar{position:sticky;top:0;z-index:20}
-canvas#out{width:100%;height:auto;background:#fff;border-radius:10px}
-input,textarea,select{color:#0f172a}
-details.tune summary{cursor:pointer;font-size:12px;font-weight:800;padding:10px}
-</style>
-</head>
-<body class="min-h-screen">
-<div class="max-w-md mx-auto p-3 space-y-3 pb-24">
-<div class="flex items-center justify-between">
-<div><h1 class="font-extrabold text-base">AIS Scanner <span class="text-[10px] bg-teal-500 text-slate-900 px-2 py-0.5 rounded-full">PHONE</span></h1>
-<p id="cvStat" class="text-[11px] text-slate-400">OpenCV loading…</p></div>
-<a href="../index.html" class="text-[11px] bg-slate-800 border border-slate-700 px-2 py-1.5 rounded-lg">Creator</a>
+:root{--bg:#fff;--fg:#1a1a1a;--mut:#666;--card:#f3f3f1;--bd:#d8d8d4;--ac:#2563eb;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#171717;--fg:#eee;--mut:#9a9a9a;--card:#262626;--bd:#3a3a3a}}
+:root[data-theme="dark"]{--bg:#171717;--fg:#eee;--mut:#9a9a9a;--card:#262626;--bd:#3a3a3a}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.45 system-ui,sans-serif}
+main{max-width:900px;margin:0 auto;padding:12px 14px 40px}
+h1{font-size:20px;margin:6px 0 10px}
+nav{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap}
+button,input{font:inherit;color:inherit}
+button{background:var(--card);border:1px solid var(--bd);border-radius:8px;padding:7px 12px;cursor:pointer}
+button.on,nav button.on{background:var(--ac);border-color:var(--ac);color:#fff}
+input{background:var(--card);border:1px solid var(--bd);border-radius:8px;padding:7px 9px;max-width:100%}
+.panel{display:none}.panel.show{display:block}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:end;margin-bottom:12px}
+label{display:flex;flex-direction:column;font-size:13px;color:var(--mut);gap:3px}
+canvas{max-width:100%;height:auto;border:1px solid var(--bd);border-radius:6px;background:#fff}
+#keyg{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:6px}
+.kr{display:flex;gap:5px;align-items:center;background:var(--card);padding:5px 8px;border-radius:8px}
+.kr b{width:26px}.kr button{padding:4px 10px}
+.box{background:var(--card);border-radius:10px;padding:10px 12px;margin:10px 0}
+table{width:100%;border-collapse:collapse}td,th{text-align:left;padding:5px 6px;border-bottom:1px solid var(--bd)}
+.mut{color:var(--mut);font-size:13px}.big{font-size:22px;font-weight:600}
+@media print{h1,nav,.noprint{display:none!important}main{padding:0}#sheet{border:0;width:100%}}
+</style></head><body><main>
+<h1>BubbleGrid <span class="mut">sheet · key · scan</span></h1>
+<nav class="noprint">
+<button data-t="p1" class="on">1 · Create sheet</button><button data-t="p2">2 · Answer key</button><button data-t="p3">3 · Scan</button>
+</nav>
+
+<section id="p1" class="panel show">
+<div class="row noprint">
+<label>School<input id="school"></label>
+<label>Test title<input id="title"></label>
+<label>Questions (5–50)<input id="n" type="number" min="5" max="50" style="width:90px"></label>
+<button onclick="window.print()">Print sheet</button>
 </div>
-<div id="stickyTop">
-<div class="flex gap-2 bg-slate-800 p-1.5 rounded-xl mb-2">
-<button id="tabKey" class="tab on" onclick="setMode('key')">1. Register Key</button>
-<button id="tabGrade" class="tab" onclick="setMode('grade')">2. Grade</button>
+<canvas id="sheet" width="1600" height="2200"></canvas>
+<p class="mut noprint">Print at 100% scale on plain white paper. Keep the four black corner squares clean; the scanner needs them.</p>
+</section>
+
+<section id="p2" class="panel">
+<div class="row"><button id="rnd">Random key (for testing)</button><button id="clr">Clear key</button></div>
+<div id="keyg"></div>
+</section>
+
+<section id="p3" class="panel">
+<div class="row">
+<button id="camb" class="on">📷 Scan with camera</button><input id="cam" type="file" accept="image/*" capture="environment" hidden>
+<label>Or upload a photo<input id="file" type="file" accept="image/*"></label>
+<label>Fill threshold %<input id="sens" type="number" value="45" min="15" max="85" style="width:80px"></label>
+<button id="sim">Simulate student</button>
 </div>
-<div id="view">
-<video id="video" playsinline muted></video>
-<canvas id="capCanvas" class="hidden"></canvas>
-<div id="overlay"><div id="a4guide"></div><div id="lockMsg">Fill frame with sheet — boxes track squares</div><div id="cb-tl" class="cornerbox"></div><div id="cb-tr" class="cornerbox"></div><div id="cb-bl" class="cornerbox"></div><div id="cb-br" class="cornerbox"></div></div>
-<canvas id="prevSmall" class="hidden" width="480"></canvas>
+<div id="msg" class="mut">Upload a photo (whole sheet visible, all 4 corner squares in frame, upright) or press Simulate student.</div>
+<div id="sum" class="box" style="display:none">
+<div class="big" id="score"></div><div class="mut" id="flags"></div>
+<div class="row" style="margin:8px 0 0"><label>Student name<input id="nm"></label><button id="add">Add to results</button></div>
 </div>
-<div class="grid grid-cols-3 gap-2 mt-2">
-<button onclick="startCam()" class="btn bg-teal-500 text-slate-900 !py-2.5 text-[13px]"><i class="fa-solid fa-camera mr-1"></i>Camera</button>
-<button onclick="switchCam()" class="btn bg-slate-700 text-white !py-2.5 text-[13px]"><i class="fa-solid fa-rotate mr-1"></i>Switch</button>
-<button onclick="captureFrame()" class="btn bg-white text-slate-900 !py-2.5 text-[13px]"><i class="fa-solid fa-circle-dot mr-1"></i>Capture</button>
-</div>
-</div>
-<label class="flex items-center gap-2 text-xs bg-slate-800 rounded-xl px-3 py-2"><input type="checkbox" id="autoCap" checked class="w-4 h-4">Auto-capture when steady</label>
-<details class="tune bg-slate-800 rounded-xl">
-<summary>⚙ Tuning + file upload (tap to open)</summary>
-<div class="p-3 space-y-2">
-<input type="file" id="filePick" accept="image/*" capture="environment" class="w-full text-xs bg-slate-700 rounded-xl p-2">
-<div class="grid grid-cols-2 gap-2 text-[11px]">
-<label>Dark threshold (0=auto Otsu)<input type="range" id="thresh" min="0" max="220" value="0" class="w-full"><span id="threshV">auto</span></label>
-<label>Sensitivity<input type="range" id="sens" min="120" max="180" value="140" class="w-full"><span id="sensV">1.40x</span></label>
-<label class="flex items-center gap-1"><input type="checkbox" id="debugBin" class="w-4 h-4">Show binary debug</label>
-<label>Expected rows (auto)<input type="number" id="expRows" value="15" min="1" max="50" readonly class="w-full text-slate-900 rounded p-1 bg-slate-200"></label>
-</div>
-<div class="flex gap-2 text-[11px]">
-<button onclick="loadKeyToGrade()" class="flex-1 bg-slate-700 border border-slate-600 rounded-lg py-1.5 font-bold">Reload key</button>
-<button onclick="toggleTorch()" class="bg-slate-700 border border-slate-600 rounded-lg px-3 font-bold">Torch</button>
-</div>
-</div>
-</details>
-<div class="bg-white text-slate-900 rounded-xl p-3 space-y-2">
-<div id="modeKeyBox">
-<h2 class="text-xs font-extrabold uppercase">Prefilled key sheet → key</h2>
-<p class="text-[11px] text-slate-500">In Creator print <b>Teacher Key (filled)</b>. Point camera, Capture. Filled bubbles become the key. Correct below if needed, then Save.</p>
-<textarea id="keyText" rows="2" placeholder="A,C,B,D …  (auto after scan)" class="w-full text-xs font-mono border rounded-lg p-2"></textarea>
-<input id="ptsText" placeholder="Points, e.g. 1,1,2 (default 1)" class="w-full text-xs border rounded-lg p-2">
-<button onclick="saveKey()" class="btn bg-slate-900 text-white">Save key on phone</button>
-<div id="keySaved" class="text-[11px] font-bold text-emerald-700"></div>
-</div>
-<div id="modeGradeBox" class="hidden">
-<h2 class="text-xs font-extrabold uppercase">Grade student sheet</h2>
-<div id="keyLoaded" class="text-[11px] text-slate-500">No key loaded.</div>
-<div id="scoreBar"><div id="scoreBox" class="text-base font-extrabold">No scan yet.</div></div>
-<button id="dlBtn" onclick="downloadGraded()" disabled class="btn bg-emerald-600 text-white disabled:bg-slate-300">Download graded PNG</button>
-</div>
-</div>
-<div class="bg-amber-50 border border-amber-200 rounded-xl p-3 text-[11px] text-amber-900"><b>Print on paper</b> — screen photos (monitor) cause glare/moiré and misreads. Print the bubble sheet flat in good light, fill bubbles dark, fit the page inside the guide.</div>
-<div class="bg-white rounded-xl p-2">
-<h2 class="text-[11px] font-extrabold text-slate-700 px-1 py-1 uppercase">Result (green=correct red=wrong yellow=blank)</h2>
-<canvas id="out"></canvas>
-<div id="detail" class="text-[11px] text-slate-600 max-h-40 overflow-y-auto p-1"></div>
-</div>
-<div class="text-[11px] text-slate-400 bg-slate-800 rounded-xl p-3">Flat paper, good light, fill bubbles dark. Hold parallel inside dashed guide. HTTPS required for camera. Name/Class/ID are write-in only — read by eye in downloaded image.</div>
-</div>
+<canvas id="out" width="10" height="10" style="display:none"></canvas>
+<div class="box"><b>Results</b> <span class="mut" id="cnt"></span>
+<table id="tb"></table>
+<div class="row" style="margin:8px 0 0"><button id="csv">Copy CSV</button><button id="rc">Clear results</button></div></div>
+</section>
+
 <script>
-let mode='key', stream=null, track=null, lastT=0, steady=0, lastHash='';
-let storedKey=JSON.parse(localStorage.getItem('ais_scan_key')||'null');
-const video=document.getElementById('video'), cap=document.getElementById('capCanvas'), out=document.getElementById('out');
-setInterval(()=>{document.getElementById('cvStat').innerText=(window.cv&&cv.Mat)?'OpenCV ready':'OpenCV loading…';},900);
-function setMode(m){mode=m;document.getElementById('tabKey').classList.toggle('on',m==='key');document.getElementById('tabGrade').classList.toggle('on',m==='grade');document.getElementById('modeKeyBox').classList.toggle('hidden',m!=='key');document.getElementById('modeGradeBox').classList.toggle('hidden',m!=='grade');}
-let camIndex=0;
-async function startCam(devId){
-try{
-if(stream) stream.getTracks().forEach(t=>t.stop());
-const cons=devId?{video:{deviceId:{exact:devId}},audio:false}:{video:{facingMode:'environment',width:{ideal:1920},height:{ideal:1440}},audio:false};
-stream=await navigator.mediaDevices.getUserMedia(cons);video.srcObject=stream;await video.play();track=stream.getVideoTracks()[0];tick();}catch(e){alert('Camera blocked. Use file upload in Tuning. '+e.message);}
+const $=id=>document.getElementById(id),W=800,H=1100,R=12,M=[[35,35],[765,35],[35,1065],[765,1065]];
+let ex={school:'Al Rowad International School',title:'Mid Term Test',n:20,key:[]},res=[],last=null;
+try{const o=JSON.parse(localStorage.getItem('bg')||'null');if(o){ex=o.ex||ex;res=o.res||res}}catch(e){}
+const save=()=>{try{localStorage.setItem('bg',JSON.stringify({ex,res}))}catch(e){}};
+function fixKey(){ex.key=Array.from({length:ex.n},(_,i)=>ex.key[i]>=0?ex.key[i]:-1)}
+
+// ---- shared layout: sheet generator and scanner both use this ----
+function layout(n){const rows=Math.ceil(n/2);return Array.from({length:n},(_,q)=>{const c=q>=rows?1:0,r=q-c*rows,x0=c?490:130;return{q,c,nx:c?460:100,y:200+r*32+16,xs:[0,1,2,3].map(i=>x0+i*40)}})}
+
+function drawSheet(cv,ans,sc){
+ const c=cv.getContext('2d');c.setTransform(sc,0,0,sc,0,0);c.fillStyle='#fff';c.fillRect(0,0,W,H);
+ c.fillStyle='#000';M.forEach(([x,y])=>c.fillRect(x-15,y-15,30,30));
+ c.textAlign='center';c.font='bold 24px sans-serif';c.fillText(ex.school,400,62);
+ c.font='bold 17px sans-serif';c.fillText(ex.title+' — Answer Bubble Sheet',400,90);
+ c.font='13px sans-serif';c.fillStyle='#444';c.fillText('Fill one bubble per row completely with black/blue pen.',400,112);
+ c.textAlign='left';c.fillStyle='#000';c.font='15px sans-serif';
+ [['Student Name:',60,145,260],['ID Number:',430,145,200],['Class:',60,175,120],['Section:',430,175,120]].forEach(([t,x,y,l])=>{c.fillText(t,x,y);c.fillRect(x+c.measureText(t).width+6,y+3,l,1)});
+ c.fillRect(50,190,700,1.5);
+ layout(ex.n).forEach(p=>{
+  c.textAlign='right';c.font='bold 15px sans-serif';c.fillStyle='#000';c.fillText(p.q+1,p.nx,p.y+5);
+  c.fillStyle='#ddd';c.fillRect(p.c?420:60,p.y+16,320,.6);
+  p.xs.forEach((x,i)=>{c.beginPath();c.arc(x,p.y,R,0,7);
+   if(ans&&ans[p.q]===i){c.fillStyle='#111';c.fill()}
+   else{c.lineWidth=1.5;c.strokeStyle='#000';c.stroke();c.fillStyle='#333';c.textAlign='center';c.font='11px sans-serif';c.fillText('ABCD'[i],x,p.y+4)}});
+ });
 }
-async function switchCam(){
-try{
-const devs=await navigator.mediaDevices.enumerateDevices();
-const cams=devs.filter(d=>d.kind==='videoinput');
-if(cams.length<2){alert('Only one camera found.');return;}
-camIndex=(camIndex+1)%cams.length;
-startCam(cams[camIndex].deviceId);
-}catch(e){alert('Switch failed: '+e.message);}
+function refresh(){drawSheet($('sheet'),null,2);rk();save()}
+
+// ---- inputs ----
+$('school').value=ex.school;$('title').value=ex.title;$('n').value=ex.n;
+$('school').oninput=e=>{ex.school=e.target.value;refresh()};
+$('title').oninput=e=>{ex.title=e.target.value;refresh()};
+$('n').oninput=e=>{const v=Math.max(5,Math.min(50,+e.target.value||5));ex.n=v;fixKey();refresh()};
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{
+ document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('on',x===b));
+ document.querySelectorAll('.panel').forEach(p=>p.classList.toggle('show',p.id===b.dataset.t))});
+
+// ---- answer key ----
+function rk(){const e=$('keyg');e.innerHTML='';for(let q=0;q<ex.n;q++){const r=document.createElement('div');r.className='kr';r.innerHTML='<b>'+(q+1)+'</b>';
+ for(let i=0;i<4;i++){const b=document.createElement('button');b.textContent='ABCD'[i];if(ex.key[q]===i)b.className='on';b.onclick=()=>{ex.key[q]=ex.key[q]===i?-1:i;save();rk()};r.append(b)}e.append(r)}}
+$('rnd').onclick=()=>{ex.key=Array.from({length:ex.n},()=>Math.floor(Math.random()*4));save();rk()};
+$('clr').onclick=()=>{fixKey();ex.key=ex.key.map(()=>-1);save();rk()};
+
+// ---- scanner ----
+function solveH(s,d){const A=[];s.forEach(([x,y],i)=>{const[X,Y]=d[i];A.push([x,y,1,0,0,0,-X*x,-X*y,X],[0,0,0,x,y,1,-Y*x,-Y*y,Y])});
+ for(let i=0;i<8;i++){let m=i;for(let r=i+1;r<8;r++)if(Math.abs(A[r][i])>Math.abs(A[m][i]))m=r;[A[i],A[m]]=[A[m],A[i]];
+  for(let r=0;r<8;r++){if(r===i)continue;const f=A[r][i]/A[i][i];for(let c=i;c<9;c++)A[r][c]-=f*A[i][c]}}
+ return A.map((r,i)=>r[8]/r[i])}
+const ap=(h,x,y)=>{const d=h[6]*x+h[7]*y+1;return[(h[0]*x+h[1]*y+h[2])/d,(h[3]*x+h[4]*y+h[5])/d]};
+
+function run(src){
+ const sw=src.naturalWidth||src.width,sh=src.naturalHeight||src.height,s=Math.min(1,1400/Math.max(sw,sh)),w=Math.round(sw*s),h=Math.round(sh*s);
+ const o=$('out'),c=o.getContext('2d');o.width=w;o.height=h;o.style.display='block';c.drawImage(src,0,0,w,h);
+ const d=c.getImageData(0,0,w,h).data,N=w*h,g=new Float32Array(N);
+ for(let i=0;i<N;i++)g[i]=.299*d[i*4]+.587*d[i*4+1]+.114*d[i*4+2];
+ // adaptive threshold via integral image
+ const W1=w+1,I=new Float64Array(W1*(h+1));
+ for(let y=0;y<h;y++){let r=0;for(let x=0;x<w;x++){r+=g[y*w+x];I[(y+1)*W1+x+1]=I[y*W1+x+1]+r}}
+ const k=Math.round(Math.min(w,h)/14),b=new Uint8Array(N);
+ for(let y=0;y<h;y++){const y0=Math.max(0,y-k),y1=Math.min(h,y+k+1);for(let x=0;x<w;x++){const x0=Math.max(0,x-k),x1=Math.min(w,x+k+1);
+  const m=(I[y1*W1+x1]-I[y0*W1+x1]-I[y1*W1+x0]+I[y0*W1+x0])/((x1-x0)*(y1-y0));b[y*w+x]=g[y*w+x]<m*.8?1:0}}
+ // find solid squares (corner markers) by connected components
+ const seen=new Uint8Array(N),st=new Int32Array(N),cand=[];
+ for(let i=0;i<N;i++){if(!b[i]||seen[i])continue;let sp=0,n=0,x0=w,x1=0,y0=h,y1=0;st[sp++]=i;seen[i]=1;
+  while(sp){const p=st[--sp],x=p%w,y=(p/w)|0;n++;if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y;
+   if(x>0&&b[p-1]&&!seen[p-1]){seen[p-1]=1;st[sp++]=p-1}
+   if(x<w-1&&b[p+1]&&!seen[p+1]){seen[p+1]=1;st[sp++]=p+1}
+   if(y>0&&b[p-w]&&!seen[p-w]){seen[p-w]=1;st[sp++]=p-w}
+   if(y<h-1&&b[p+w]&&!seen[p+w]){seen[p+w]=1;st[sp++]=p+w}}
+  const bw=x1-x0+1,bh=y1-y0+1,r=bw/bh;
+  if(bw>8&&bh>8&&bw<w*.12&&bh<w*.12&&r>.7&&r<1.4&&n/(bw*bh)>.65)cand.push([(x0+x1)/2,(y0+y1)/2,bw])}
+ const T=[[0,0],[w,0],[0,h],[w,h]],pk=T.map(t=>cand.reduce((a,q)=>!a||Math.hypot(q[0]-t[0],q[1]-t[1])<Math.hypot(a[0]-t[0],a[1]-t[1])?q:a,null));
+ const ws=pk.map(p=>p&&p[2]);
+ if(pk.some(p=>!p)||new Set(pk).size<4||Math.max(...ws)/Math.min(...ws)>1.6){$('msg').textContent='Could not find all 4 corner squares. Keep the whole sheet in frame, upright, with even lighting.';$('sum').style.display='none';return}
+ const Hm=solveH(M,pk.map(p=>[p[0],p[1]])),sc=Math.hypot(pk[1][0]-pk[0][0],pk[1][1]-pk[0][1])/730;
+ const sens=(+$('sens').value||45)/100,lay=layout(ex.n);let score=0,blank=[],multi=[],unkeyed=0;
+ const ans=lay.map(p=>{
+  const f=p.xs.map(x=>{let t=0,dk=0;for(let dy=-6;dy<=6;dy+=2)for(let dx=-6;dx<=6;dx+=2){if(dx*dx+dy*dy>42)continue;const[px,py]=ap(Hm,x+dx,p.y+dy),ix=Math.round(px),iy=Math.round(py);if(ix<0||iy<0||ix>=w||iy>=h)continue;t++;dk+=b[iy*w+ix]}return t?dk/t:0});
+  const m=f.map((v,i)=>v>=sens?i:-1).filter(i=>i>=0);
+  if(!m.length){blank.push(p.q+1);return -1}if(m.length>1){multi.push(p.q+1);return -2}return m[0]});
+ // overlay
+ const ring=(pt,col,lw,fill)=>{c.beginPath();c.arc(pt[0],pt[1],R*sc*(fill?1:1.35),0,7);c.lineWidth=lw;c.strokeStyle=col;if(fill){c.fillStyle=fill;c.fill()}c.stroke()};
+ lay.forEach(p=>{const kk=ex.key[p.q],a=ans[p.q],pt=i=>ap(Hm,p.xs[i],p.y);
+  if(kk<0)unkeyed++;
+  if(a>=0&&a===kk){score++;ring(pt(a),'#16a34a',3,'rgba(22,163,74,.35)')}
+  else{if(kk>=0)ring(pt(kk),'#16a34a',3);if(a>=0)ring(pt(a),'#dc2626',3,'rgba(220,38,38,.35)');if(a<0)for(let i=0;i<4;i++)ring(pt(i),'#d97706',2)}});
+ $('msg').textContent='Scanned. Green = correct, red = wrong, orange = blank or multiple marks.';
+ $('sum').style.display='block';$('score').textContent='Score: '+score+' / '+ex.n;
+ $('flags').textContent=(blank.length?'Blank: Q'+blank.join(', Q')+'. ':'')+(multi.length?'Multiple marks: Q'+multi.join(', Q')+'. ':'')+(unkeyed?unkeyed+' question(s) have no key set.':'');
+ last={score,n:ex.n,blank:blank.length,multi:multi.length};
 }
-async function toggleTorch(){try{await track.applyConstraints({advanced:[{torch:true}]});}catch(e){alert('Torch not supported');}}
-document.getElementById('filePick').onchange=e=>{const f=e.target.files[0];if(!f)return;const img=new Image();img.onload=()=>{drawTo(cap,img);handleImage(false);};img.src=URL.createObjectURL(f);};
-function drawTo(c,img){const mw=1400,sc=Math.min(1,mw/img.videoWidth||img.width);const w=(img.videoWidth||img.width)*sc,h=(img.videoHeight||img.height)*sc;c.width=w;c.height=h;c.getContext('2d').drawImage(img,0,0,w,h);}
-function captureFrame(){if(video.videoWidth){drawTo(cap,video);handleImage(true);}else alert('Open camera or upload file first.');}
-function tick(){
-if(!video.videoWidth) {requestAnimationFrame(tick);return;}
-if(document.getElementById('autoCap').checked && mode==='grade' && storedKey){
-drawTo(cap,video);
-const now=Date.now();
-if(now-lastT>900){lastT=now;handleImage(true);}
-}
-trackPreviewBoxes();
-requestAnimationFrame(tick);
-}
-let lastTrack=0;
-function trackPreviewBoxes(){
-  const now=Date.now();
-  if(now-lastTrack<800) return; lastTrack=now;
-  if(!video.videoWidth||!(window.cv&&cv.Mat)) return;
-  try{
-    const vw=video.videoWidth, vh=video.videoHeight;
-    const sw=480, sh=Math.round(480*vh/vw);
-    const pc=document.getElementById('prevSmall');
-    pc.width=sw; pc.height=sh;
-    pc.getContext('2d').drawImage(video,0,0,sw,sh);
-    let src=cv.imread(pc);
-    let gray=new cv.Mat();cv.cvtColor(src,gray,cv.COLOR_RGBA2GRAY);
-    let bin=new cv.Mat();cv.threshold(gray,bin,90,255,cv.THRESH_BINARY_INV);
-    let contours=new cv.MatVector(),hier=new cv.Mat();
-    cv.findContours(bin,contours,hier,cv.RETR_EXTERNAL,cv.CHAIN_APPROX_SIMPLE);
-    let quads=[];
-    for(let i=0;i<contours.size();i++){
-      const c=contours.get(i);const a=cv.contourArea(c);
-      if(a<300||a>sw*sh*0.06)continue;
-      const peri=cv.arcLength(c,true);const approx=new cv.Mat();
-      cv.approxPolyDP(c,approx,0.04*peri,true);
-      if(approx.rows===4){const r=cv.boundingRect(c);const asp=r.width/Math.max(1,r.height);
-        if(asp>0.8&&asp<1.25) quads.push({cx:(r.x+r.width/2)/sw*vw,cy:(r.y+r.height/2)/sh*vh,area:a});}
-      approx.delete();c.delete();
-    }
-    src.delete();gray.delete();bin.delete();contours.delete();hier.delete();
-    if(quads.length<4){setLockUI(false,'Fill frame — '+(quads.length||0)+'/4 squares');return;}
-    // pick 4 nearest to frame corners
-    const corners=[{x:0,y:0},{x:vw,y:0},{x:0,y:vh},{x:vw,y:vh}];
-    const picked=corners.map(c=>{let best=null,bd=1e18;quads.forEach(q=>{const d=(q.cx-c.x)**2+(q.cy-c.y)**2;if(d<bd){bd=d;best=q;}});return best;});
-    if(new Set(picked).size<4){setLockUI(false,'Fill frame — squares found, adjust');return;}
-    const ord=orderCorners(picked.map(q=>({x:q.cx,y:q.cy})));
-    // map frame coords -> displayed overlay % (object-fit: cover)
-    const view=document.getElementById('view');
-    const ew=view.clientWidth, eh=view.clientHeight;
-    const scale=Math.max(ew/vw,eh/vh);
-    const dw=vw*scale, dh=vh*scale, ox=(dw-ew)/2, oy=(dh-eh)/2;
-    const ids=['cb-tl','cb-tr','cb-br','cb-bl'];
-    // orderCorners returns [tl,tr,br,bl]
-    const map={ 'cb-tl':ord[0], 'cb-tr':ord[1], 'cb-br':ord[2], 'cb-bl':ord[3] };
-    ids.forEach(id=>{
-      const p=map[id]; const el=document.getElementById(id);
-      const dx=p.x*scale-ox, dy=p.y*scale-oy;
-      el.style.left=(dx/ew*100)+'%'; el.style.top=(dy/eh*100)+'%';
-    });
-    setLockUI(true,'Locked — Capture');
-  }catch(e){}
-}
-function orderCorners(pts){
-  // pts: [{x,y} x4] -> [tl,tr,br,bl]
-  const s=pts.map(p=>({p,s:p.x+p.y,d:p.x-p.y}));
-  const tl=[...s].sort((a,b)=>a.s-b.s)[0].p;
-  const br=[...s].sort((a,b)=>b.s-a.s)[0].p;
-  const tr=[...s].sort((a,b)=>b.d-a.d)[0].p;
-  const bl=[...s].sort((a,b)=>a.d-b.d)[0].p;
-  return [tl,tr,br,bl];
-}
-function tryWarpByFiducials(srcCanvas){
-  // find 4 large solid squares near corners; if found warp to straight
-  let src=cv.imread(srcCanvas);
-  let gray=new cv.Mat();cv.cvtColor(src,gray,cv.COLOR_RGBA2GRAY);
-  let bin=new cv.Mat();cv.threshold(gray,bin,90,255,cv.THRESH_BINARY_INV);
-  let contours=new cv.MatVector(),hier=new cv.Mat();
-  cv.findContours(bin,contours,hier,cv.RETR_EXTERNAL,cv.CHAIN_APPROX_SIMPLE);
-  let quads=[];
-  for(let i=0;i<contours.size();i++){
-    const c=contours.get(i);const a=cv.contourArea(c);
-    if(a<800||a>bin.rows*bin.cols*0.05)continue;
-    const peri=cv.arcLength(c,true);const approx=new cv.Mat();
-    cv.approxPolyDP(c,approx,0.04*peri,true);
-    if(approx.rows===4){
-      const r=cv.boundingRect(c);const asp=r.width/Math.max(1,r.height);
-      if(asp>0.8&&asp<1.25){
-        // solidity: filled square, not bubble (bubbles smaller + circular)
-        quads.push({area:a,cx:r.x+r.width/2,cy:r.y+r.height/2,rect:r});
-      }
-    }
-    approx.delete();c.delete();
-  }
-  src.delete();gray.delete();bin.delete();contours.delete();hier.delete();
-  // pick 4 closest to image corners
-  if(quads.length<4) return {ok:false,n:quads.length};
-  const W=srcCanvas.width,H=srcCanvas.height;
-  const corners=[{x:0,y:0},{x:W,y:0},{x:0,y:H},{x:W,y:H}];
-  const picked=corners.map(c=>{
-    let best=null,bd=1e12;
-    quads.forEach(q=>{const d=(q.cx-c.x)**2+(q.cy-c.y)**2;if(d<bd){bd=d;best=q;}});
-    return best;
-  });
-  if(new Set(picked).size<4) return {ok:false,n:quads.length};
-  const pts=orderCorners(picked.map(q=>({x:q.cx,y:q.cy})));
-  // warp to 1000x1400 straight
-  try{
-    const srcM=cv.matFromArray(4,1,cv.CV_32FC2,[pts[0].x,pts[0].y,pts[1].x,pts[1].y,pts[2].x,pts[2].y,pts[3].x,pts[3].y]);
-    const dstM=cv.matFromArray(4,1,cv.CV_32FC2,[0,0,1000,0,1000,1400,0,1400]);
-    const M=cv.getPerspectiveTransform(srcM,dstM);
-    let src2=cv.imread(srcCanvas);
-    let dst=new cv.Mat();cv.warpPerspective(src2,dst,M,new cv.Size(1000,1400),cv.INTER_LINEAR,cv.BORDER_CONSTANT,new cv.Scalar(255,255,255,255));
-    cv.imshow(srcCanvas,dst);
-    src2.delete();dst.delete();srcM.delete();dstM.delete();M.delete();
-    return {ok:true};
-  }catch(e){return {ok:false,n:4};}
-}
-function setLockUI(locked,msg){
-  ['cb-tl','cb-tr','cb-bl','cb-br'].forEach(id=>document.getElementById(id).classList.toggle('locked',!!locked));
-  document.getElementById('lockMsg').innerText=msg;
-}
-function currentThresh(){const v=parseInt(document.getElementById('thresh').value);document.getElementById('threshV').innerText=v===0?'auto':v;return v;}
-function currentSens(){const v=parseInt(document.getElementById('sens').value);document.getElementById('sensV').innerText=(v/100).toFixed(2)+'x';return v/100;}
-function detectBubbles(canvasEl, threshOpt){
-let src=cv.imread(canvasEl);
-let gray=new cv.Mat();cv.cvtColor(src,gray,cv.COLOR_RGBA2GRAY);
-let blur=new cv.Mat();cv.GaussianBlur(gray,blur,new cv.Size(5,5),0);
-let bin=new cv.Mat();
-if(!threshOpt) cv.threshold(blur,bin,0,255,cv.THRESH_BINARY_INV+cv.THRESH_OTSU);
-else cv.threshold(blur,bin,threshOpt,255,cv.THRESH_BINARY_INV);
-if(document.getElementById('debugBin').checked){cv.imshow(out,bin);src.delete();gray.delete();blur.delete();bin.delete();return 'debug';}
-let contours=new cv.MatVector(),hier=new cv.Mat();
-cv.findContours(bin,contours,hier,cv.RETR_EXTERNAL,cv.CHAIN_APPROX_SIMPLE);
-let cands=[];
-for(let i=0;i<contours.size();i++){const c=contours.get(i);const a=cv.contourArea(c);if(a<120||a>12000)continue;const p=cv.arcLength(c,true);if(!p)continue;const circ=4*Math.PI*a/(p*p);if(circ<0.55)continue;const r=cv.boundingRect(c);const asp=r.width/Math.max(1,r.height);if(asp<0.7||asp>1.4)continue;const hwr=r.height/Math.max(1,bin.rows);if(hwr<0.008||hwr>0.06)continue;cands.push({x:r.x+r.width/2,y:r.y+r.height/2,w:r.width,h:r.height,area:a});c.delete();}
-// median area filter: bubbles are similar size; drop outliers
-if(cands.length>4){const s=[...cands].map(c=>c.area).sort((a,b)=>a-b);const med=s[Math.floor(s.length/2)];cands=cands.filter(c=>c.area>med*0.35&&c.area<med*2.8);}
-// FIXED-template columns: left half = rows 1-25, right half = 26-50. Cluster per half
-// so same-height rows across columns never merge (the old A+B-every-row bug).
-const midX=bin.cols/2, gut=bin.cols*0.02;
-cands=cands.filter(c=>Math.abs(c.x-midX)>gut);
-function clusterHalf(list){
-  list.sort((a,b)=>a.y-b.y);
-  const rs=[];const tol=Math.max(12,(cap.height||800)*0.018);
-  list.forEach(c=>{let f=false;for(const r of rs){if(Math.abs(r.y-c.y)<tol){r.items.push(c);r.y=(r.y*(r.items.length)+c.y)/(r.items.length+1);f=true;break;}}if(!f)rs.push({y:c.y,items:[c]});});
-  rs.forEach(r=>r.items.sort((a,b)=>a.x-b.x));
-  return rs.filter(r=>r.items.length>=2&&r.items.length<=6);
-}
-let bRows=clusterHalf(cands.filter(c=>c.x<midX)).concat(clusterHalf(cands.filter(c=>c.x>=midX)));
-// expected rows hint: keep closest to expected count from top
-const exp=parseInt(document.getElementById('expRows').value)||0;
-if(exp>0&&bRows.length>exp) bRows=bRows.slice(0,exp);
-bRows=bRows.slice(0,50);
-const d=bin.data,cols=bin.cols;
-function fr(b){const x0=Math.max(0,Math.floor(b.x-b.w*0.30)),x1=Math.min(cols-1,Math.ceil(b.x+b.w*0.30)),y0=Math.max(0,Math.floor(b.y-b.h*0.30));let y1=Math.ceil(b.y+b.h*0.30);let w=0,t=0;for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++){t++;if(d[y*cols+x]>0)w++;}return w/Math.max(1,t);}
-const outRows=bRows.map(r=>({items:r.items,fills:r.items.map(fr)}));
-src.delete();gray.delete();blur.delete();bin.delete();contours.delete();hier.delete();
-return outRows;
-}
-function pickSingle(fills, ratio){
-const L=['A','B','C','D','E','F'];
-const idx=fills.map((f,i)=>[f,i]).sort((a,b)=>b[0]-a[0]);
-const best=idx[0][0], second=idx[1]?idx[1][0]:0;
-// strict: needs dark fill + clear margin (fixes A+B-every-row bug from shadows)
-if(best<0.42) return [];
-if(best/second<ratio) return [];
-return [L[idx[0][1]]];
-}
-function pickMulti(fills){
-const L=['A','B','C','D','E','F'];
-const mx=Math.max(...fills);
-if(mx<0.42) return [];
-return fills.map((f,i)=>f>0.42&&f>mx*0.6?L[i]:null).filter(Boolean);
-}
-function handleImage(fromCam){
-const warp=tryWarpByFiducials(cap);
-if(warp.ok) setLockUI(true,'Corners locked — scanning');
-else setLockUI(false, warp.n>0?('Found '+warp.n+'/4 squares — fit black squares in boxes'):'Fit 4 black squares in corner boxes');
-const rows=detectBubbles(cap,currentThresh());
-if(rows==='debug') return;
-if(!rows.length){if(!fromCam||mode==='key')alert('No bubbles found. Fill frame with sheet, flatten, better light. Try threshold auto/120-160.');return;}
-const exp=parseInt(document.getElementById('expRows').value)||0;
-if(exp>0&&Math.abs(rows.length-exp)>2&&!fromCam) alert('Found '+rows.length+' rows but expected '+exp+'. Adjust threshold or move closer.');
-if(mode==='key') registerKey(rows);
-else gradeRows(rows);
-}
-function registerKey(rows){
-const L=['A','B','C','D','E','F'];
-const ratio=currentSens();
-const key=rows.map(r=>{
-const multi=r.items.length>2&&false; // key sheet: detect multi by 2 dark
-const picks=pickMulti(r.fills);
-if(picks.length>=2) return picks.join('+');
-const s=pickSingle(r.fills,ratio);
-return s.join('')||'-';
-});
-document.getElementById('keyText').value=key.join(',');
-drawAnnotated(rows, key.map(k=>({key:k,picked:k==='-'?[]:k.split('+'),ok:true,blank:k==='-'})), 'KEY: '+rows.length+' rows — review, Save', true);
-document.getElementById('keySaved').innerText=rows.length+' rows detected. Review, edit, Save.';
-}
-function parsePastedKey(raw){
-  raw=(raw||'').trim();
-  if(!raw) return {key:[],pts:[]};
-  let keyPart=raw, ptsPart='';
-  const mPts=raw.match(/POINTS\s*:\s*([0-9,\s]+)/i);
-  if(mPts) ptsPart=mPts[1];
-  const mKey=raw.match(/KEY\s*:\s*([^|]+)/i);
-  if(mKey) keyPart=mKey[1];
-  else if(raw.includes('|')) keyPart=raw.split('|')[0];
-  const toks=keyPart.split(/[,|\n;]+/).map(s=>s.trim().toUpperCase()).filter(Boolean);
-  const clean=[];
-  for(let t of toks){
-    t=t.replace(/^KEY\s*:\s*/,'').trim();
-    if(!t||/^POINTS/.test(t)) continue;
-    if(/^[A-F](\+[A-F])+$/.test(t)){clean.push(t);continue;}
-    const m2=t.match(/([A-F](?:\+[A-F]+)?|\bT\b|\bF\b|-)/);
-    if(m2) clean.push(m2[1]);
-  }
-  const pts=ptsPart?ptsPart.split(/[, ]+/).map(x=>parseInt(x)||1).filter(x=>x>0):[];
-  return {key:clean,pts};
-}
-function saveKey(){
-const parsed=parsePastedKey(document.getElementById('keyText').value);
-const k=parsed.key;
-let p=document.getElementById('ptsText').value.trim();
-if(!p&&parsed.pts.length) {p=parsed.pts.join(',');document.getElementById('ptsText').value=p;}
-const exp=parseInt(document.getElementById('expRows').value)||0;
-if(!k.length){alert('No valid key letters found. Paste like A,C,B');return;}
-storedKey={key:k,pts:p,savedAt:new Date().toISOString()};
-localStorage.setItem('ais_scan_key',JSON.stringify(storedKey));
-document.getElementById('expRows').value=k.length;
-document.getElementById('keySaved').innerText='Key saved on phone: '+k.length+' rows.';
-setMode('grade');loadKeyToGrade();
-}
-function loadKeyToGrade(){
-storedKey=JSON.parse(localStorage.getItem('ais_scan_key')||'null');
-if(storedKey) document.getElementById('expRows').value=storedKey.key.length;
-document.getElementById('keyLoaded').innerText=storedKey?('Key: '+storedKey.key.length+' rows ('+storedKey.key.slice(0,8).join(',')+'…)'):'No saved key. Register first.';
-}
-function gradeRows(rows){
-if(!storedKey){alert('Register key first (tab 1).');setMode('key');return;}
-const L=['A','B','C','D','E','F'];
-const pts=(storedKey.pts||'').split(/[, ]+/).map(x=>parseInt(x)||1);
-let earned=0,total=0,correct=0;const det=[];
-rows.forEach((r,ri)=>{
-const kraw=(storedKey.key[ri]||'-');const p=pts[ri]||1;total+=p;
-let keySet=new Set();
-if(kraw.includes('+'))kraw.split('+').forEach(s=>{if(L.includes(s.trim()))keySet.add(s.trim());});
-else if(kraw==='T')keySet.add('A');else if(kraw==='F')keySet.add('B');
-else if(L.includes(kraw))keySet.add(kraw);
-const isMulti=kraw.includes('+');
-let picked=isMulti?pickMulti(r.fills):pickSingle(r.fills,currentSens());
-let ok=picked.length? (isMulti? (picked.length===keySet.size&&picked.every(x=>keySet.has(x))) : (picked.length===1&&keySet.has(picked[0]))) : false;
-if(ok){earned+=p;correct++;}
-det.push({key:kraw,picked:picked.join('+')||'blank',ok,blank:!picked.length,p});
-});
-drawAnnotated(rows, det, 'Score '+earned+' / '+total+' ('+correct+'/'+rows.length+')', false);
-document.getElementById('scoreBox').innerText='Score '+earned+' / '+total+' — '+correct+'/'+rows.length;
-document.getElementById('detail').innerHTML=det.map((d,i)=>'<div>R'+(i+1)+': key <b>'+d.key+'</b> • '+d.picked+' • '+(d.blank?'blank':d.ok?'correct (+'+d.p+')':'wrong')+'</div>').join('');
-document.getElementById('dlBtn').disabled=false;
-try{navigator.vibrate&&navigator.vibrate(60);}catch(e){}
-}
-function drawAnnotated(rows, det, header, isKey){
-out.width=cap.width;out.height=cap.height;
-const ctx=out.getContext('2d');ctx.drawImage(cap,0,0);
-rows.forEach((r,ri)=>{
-const d=det[ri]||{picked:[],key:'-'};
-const pickedSet=new Set(Array.isArray(d.picked)?d.picked:(d.picked&&d.picked!=='blank'?d.picked.split('+'):[]));
-const keySet=new Set();
-const kraw=(d.key||'').toString();
-if(kraw.includes('+'))kraw.split('+').forEach(s=>{s=s.trim();if(s)keySet.add(s);});
-else if(kraw&&kraw!=='-'&&kraw!=='blank')keySet.add(kraw);
-r.items.forEach((b,bi)=>{
-const L=['A','B','C','D','E','F'];const letter=L[bi];
-const cx=b.x,cy=b.y,rad=Math.max(b.w,b.h)*0.65;
-const isPick=pickedSet.has(letter);
-const isKeyAns=keySet.has(letter);
-ctx.lineWidth=4;
-if(!pickedSet.size && !isKey){ctx.strokeStyle='#eab308';}
-else if(isKey){ctx.strokeStyle='#eab308';}
-else if(isPick&&d.ok){ctx.strokeStyle='#16a34a';}
-else if(isPick&&!d.ok){ctx.strokeStyle='#dc2626';}
-else if(!isPick&&isKeyAns&&!d.ok){ctx.strokeStyle='#16a34a';ctx.setLineDash([5,4]);}
-else{ctx.strokeStyle='rgba(100,116,139,0.6)';ctx.lineWidth=2;}
-// in key-register mode highlight filled green
-if(isKey&&isPick){ctx.strokeStyle='#16a34a';ctx.lineWidth=4;}
-ctx.beginPath();ctx.arc(cx,cy,rad,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);
-});
-});
-ctx.fillStyle='rgba(15,23,42,0.93)';ctx.fillRect(0,0,out.width,68);ctx.fillStyle='#fff';ctx.font='bold 24px sans-serif';
-ctx.fillText(header.slice(0,48),16,32);
-ctx.font='13px sans-serif';ctx.fillStyle='#cbd5e1';ctx.fillText(isKey?'Review key, Save, then Grade tab':'Green=correct Red=wrong Yellow=blank',16,54);
-}
-function downloadGraded(){if(!out.width)return;const a=document.createElement('a');a.href=out.toDataURL('image/png');a.download='graded_'+Date.now()+'.png';a.click();}
-loadKeyToGrade();
-</script>
-</body>
-</html>
+
+$('file').onchange=e=>{const f=e.target.files[0];if(!f)return;const fr=new FileReader();fr.onload=()=>{const im=new Image();im.onload=()=>run(im);im.src=fr.result};fr.readAsDataURL(f);e.target.value=''};
+$('cam').onchange=$('file').onchange;$('camb').onclick=()=>$('cam').click();
+$('sens').onchange=()=>{};
+$('sim').onclick=()=>{
+ if(ex.key.some(k=>k<0)){ex.key=Array.from({length:ex.n},(_,i)=>ex.key[i]>=0?ex.key[i]:Math.floor(Math.random()*4));save();rk()}
+ const ans=ex.key.map(k=>Math.random()<.7?k:(Math.random()<.12?-1:(k+1+Math.floor(Math.random()*3))%4));
+ const sh=document.createElement('canvas');sh.width=W;sh.height=H;drawSheet(sh,ans,1);
+ const ph=document.createElement('canvas');ph.width=1000;ph.height=1300;const c=ph.getContext('2d');c.fillStyle='#8a7f72';c.fillRect(0,0,1000,1300);
+ c.translate(510,640);c.rotate(.05);c.scale(1.1,1.1);c.shadowColor='rgba(0,0,0,.4)';c.shadowBlur=20;c.drawImage(sh,-400,-550);
+ run(ph)};
+$('add').onclick=()=>{if(!last)return;res.push({name:$('nm').value||'Student '+(res.length+1),...last});$('nm').value='';save();rr()};
+function rr(){$('cnt').textContent='('+res.length+')';$('tb').innerHTML='<tr><th>Name</th><th>Score</th><th>%</th><th>Blank/Multi</th></tr>'+res.map(r=>'<tr><td></td><td>'+r.score+'/'+r.n+'</td><td>'+Math.round(100*r.score/r.n)+'</td><td>'+r.blank+'/'+r.multi+'</td></tr>').join('');
+ [...$('tb').rows].slice(1).forEach((tr,i)=>tr.cells[0].textContent=res[i].name)}
+$('csv').onclick=()=>{const t='Name,Score,Total,Percent\n'+res.map(r=>'"'+r.name.replace(/"/g,'""')+'",'+r.score+','+r.n+','+Math.round(100*r.score/r.n)).join('\n');try{navigator.clipboard.writeText(t)}catch(e){}};
+$('rc').onclick=()=>{res=[];save();rr()};
+fixKey();refresh();rr();
+</script></main></body></html>
